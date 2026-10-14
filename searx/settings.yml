@@ -3278,7 +3278,8 @@ engines:
     inactive: true
 
   - name: brave
-    engine: brave
+    # reads the results page HTML over HTTP/3, see searx/engines/brave_web.py
+    engine: brave_web
     shortcut: br
     time_range_support: true
     paging: true
