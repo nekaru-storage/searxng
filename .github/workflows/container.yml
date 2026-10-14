@@ -4,11 +4,7 @@ name: Container
 # yamllint disable-line rule:truthy
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Integration
-    types:
-      - completed
+  push:
     branches:
       - master
 
@@ -25,9 +21,6 @@ env:
 
 jobs:
   build:
-    if: |
-      github.event_name == 'workflow_dispatch'
-      || github.event.workflow_run.conclusion == 'success'
     name: Build (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -56,7 +49,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: "${{ github.event.workflow_run.head_sha || github.sha }}"
           persist-credentials: "false"
           fetch-depth: "0"
 
@@ -112,7 +104,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: "${{ github.event.workflow_run.head_sha || github.sha }}"
           persist-credentials: "false"
 
       - name: Download container image
@@ -150,7 +141,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: "${{ github.event.workflow_run.head_sha || github.sha }}"
           persist-credentials: "false"
 
       - name: Download container images
