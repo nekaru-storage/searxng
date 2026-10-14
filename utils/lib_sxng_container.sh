@@ -215,7 +215,7 @@ container.push() {
     required_commands podman
 
     local release_tags=("$DOCKER_TAG" "latest")
-    local release_registries=("ghcr.io" "docker.io")
+    local release_registries=("ghcr.io")
 
     if [ "$GITHUB_ACTIONS" != "true" ]; then
         die 1 "This command is intended to be run in Actions"
