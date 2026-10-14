@@ -4,9 +4,10 @@
 Brave now wraps the page data the default engine reads in JavaScript functions,
 and answers 429 to anything but HTTP/3.  The results are still plain HTML.
 
-Adapted from ``avkean/searxng`` commit
-`823d9ecc9b107bc8a7dd3769609826ea260a1e81 <https://github.com/avkean/searxng/commit/823d9ecc9b107bc8a7dd3769609826ea260a1e81>`__
-("Fix Google and Brave, and the update rollback").
+Adapted from avkean/searxng commit 823d9ecc ("Fix Google and Brave, and the
+update rollback"):
+
+- https://github.com/avkean/searxng/commit/823d9ecc9b107bc8a7dd3769609826ea260a1e81
 """
 
 import typing as t
