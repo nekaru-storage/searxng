@@ -51,9 +51,9 @@ def request(query: str, params: "OnlineParams") -> None:
     )
 
 
-def _span_text(link, css_class: str):
+def _block_text(block, xpath: str):
     return extract_text(
-        eval_xpath_getindex(link, f'.//span[contains(@class, "{css_class}")]', 0, default=None),
+        eval_xpath_getindex(block, xpath, 0, default=None),
         allow_none=True,
     )
 
@@ -61,22 +61,33 @@ def _span_text(link, css_class: str):
 def response(resp: "SXNG_Response") -> EngineResults:
     results = EngineResults()
     seen = set()
-    for link in eval_xpath_list(wml_dom(resp), '//a[contains(@href, "/url?q=")]'):
-        href = link.get("href")
-        if not href:
+
+    # Google serves the news tab with the same result card as the web tab
+    # (``Gx5Zad`` block, ``h3.zBAuLc`` title) and the result link is
+    # ``/url?opi=...&q=<target>``.  The former ``M3vVJe`` / ``dXDvrc`` /
+    # ``YVIcad`` spans no longer exist in that markup.
+    for block in eval_xpath_list(wml_dom(resp), '//div[contains(@class, "Gx5Zad")]'):
+        title_tag = eval_xpath_getindex(block, './/h3[contains(@class, "zBAuLc")]', 0, default=None)
+        if title_tag is None:
+            continue
+        title = extract_text(title_tag)
+
+        raw_url = eval_xpath_getindex(
+            block,
+            './/a[contains(@href, "/url?") and .//h3[contains(@class, "zBAuLc")]]/@href',
+            0,
+            default=None,
+        )
+        if raw_url is None:
             continue
 
-        url = unwrap_google_url(href)
-        if url in seen or "google.com/search" in url:
+        url = unwrap_google_url(raw_url)
+        if not url.startswith("http") or url in seen:
             continue
 
-        title = _span_text(link, "M3vVJe") or _span_text(link, "fuLhoc")
-        if not title:
-            continue
-
-        source = _span_text(link, "dXDvrc")
-        pub_date = _span_text(link, "YVIcad")
-        thumbnail = eval_xpath_getindex(link, './/img[contains(@src, "encrypted-tbn")]/@src', 0, default=None)
+        source = _block_text(block, './/div[contains(@class, "AKfAgb")]')
+        pub_date = _block_text(block, './/span[contains(@class, "MDvRSc")]')
+        thumbnail = eval_xpath_getindex(block, './/img[contains(@src, "encrypted-tbn")]/@src', 0, default=None)
 
         seen.add(url)
         results.add(
