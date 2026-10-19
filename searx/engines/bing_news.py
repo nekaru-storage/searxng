@@ -76,6 +76,12 @@ def response(resp):
 
     results = []
 
+    # Bing answers HTTP 200 with an empty body when the query has no news
+    # results (e.g. a rare search term); html.fromstring() would then raise
+    # ``ParserError: Document is empty``.
+    if not resp.text or not resp.text.strip():
+        return results
+
     dom = resp.html()
 
     for newsitem in eval_xpath_list(dom, '//div[contains(@class, "newsitem")]'):
