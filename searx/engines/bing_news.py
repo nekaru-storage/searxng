@@ -7,7 +7,7 @@
 
 """
 
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 
 from searx.enginelib.traits import EngineTraits
 from searx.engines.bing import get_locale_params
@@ -109,10 +109,12 @@ def response(resp):
 
         thumbnail = None
         imagelink = eval_xpath_getindex(newsitem, './/a[@class="imagelink"]//img', 0, None)
-        if imagelink is not None:
-            thumbnail = imagelink.attrib.get("src")
-            if not thumbnail.startswith("https://www.bing.com"):
-                thumbnail = "https://www.bing.com/" + thumbnail
+        if imagelink is not None and imagelink.attrib.get("src"):
+            # Bing serves the thumbnail as a root-relative ``/th?...`` path, so
+            # join it onto the host instead of prefixing it: a plain string
+            # prefix produced ``https://www.bing.com//th?...`` and mangled an
+            # absolute ``src`` into ``https://www.bing.com/https://...``.
+            thumbnail = urljoin(base_url + "/", imagelink.attrib["src"])
 
         results.append(
             {
