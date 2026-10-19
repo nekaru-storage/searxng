@@ -4,7 +4,9 @@
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 from json import loads
 
-from searx.utils import searxng_useragent
+# Anubis lets link-preview fetchers through while challenging browsers and the
+# SearXNG agent, so this engine identifies as one.
+UNSPLASH_USER_AGENT = "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)"
 
 # about
 about = {
@@ -34,11 +36,11 @@ def request(query, params):
     params['url'] = search_url + urlencode({'query': query, 'page': params['pageno'], 'per_page': page_size})
     logger.debug("query_url --> %s", params['url'])
 
-    # common user agents (e.g. Firefox, Chrome) are blocked
-    # by Anubis (https://anubis.techaro.lol/)
-    # so we pass the searxng user agent instead, which is not
-    # commonly used by crawlers and hence not blocked
-    params["headers"]["User-Agent"] = searxng_useragent()
+    # Unsplash protects its API with Anubis (https://anubis.techaro.lol/).
+    # Common browser user agents and the SearXNG agent now both get a 401
+    # challenge, but agents that only ever fetch link previews are still let
+    # through, so we present one of those.
+    params["headers"]["User-Agent"] = UNSPLASH_USER_AGENT
 
     return params
 
