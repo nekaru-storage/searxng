@@ -1956,6 +1956,11 @@ engines:
   - name: pinterest
     engine: pinterest
     shortcut: pin
+    # Pinterest answers "success" with an empty result list for anonymous
+    # clients and rejects a cookie session with 403 "Invalid Resource Request",
+    # so the engine cannot return anything without a login. Disabled until
+    # Pinterest serves results to anonymous requests again.
+    disabled: true
 
   - name: piped
     engine: piped
