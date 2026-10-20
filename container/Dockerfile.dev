@@ -18,8 +18,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt ./requirements-server.txt ./requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-server.txt -r requirements-dev.txt
+COPY ./requirements.txt ./requirements-server.txt ./
+# Only runtime dependencies: the image stays small.  Run the unit tests on the
+# host (``make install && make test.unit``), they need requirements-dev.txt.
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-server.txt
 
 EXPOSE 8080
 
