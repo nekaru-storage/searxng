@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Settings used by ``container/docker-compose.dev.yml``.
+use_default_settings: true
+
+general:
+  debug: true
+  instance_name: "SearXNG dev"
+
+search:
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "dev-only-secret-key"
+  limiter: false

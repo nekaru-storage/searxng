@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Local development stack.  The source tree is bind-mounted, so changes to
+# ``searx/`` are picked up by restarting the ``core`` service::
+#
+#   docker compose -f container/docker-compose.dev.yml up --build
+#
+# The JSON API is enabled in ``container/dev/settings.yml`` to make testing
+# engines with ``curl`` easier.
+name: searxng-dev
+
+services:
+  core:
+    container_name: searxng-dev-core
+    build:
+      context: ..
+      dockerfile: container/Dockerfile.dev
+    image: searxng-dev:local
+    restart: unless-stopped
+    ports:
+      - "${SEARXNG_PORT:-8080}:8080"
+    volumes:
+      - ..:/app
+      - ./dev/settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      SEARXNG_SETTINGS_PATH: /etc/searxng/settings.yml
+      SEARXNG_DEBUG: "1"

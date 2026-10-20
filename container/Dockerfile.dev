@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Development image: only the Python dependencies are baked into the image,
+# the source tree is bind-mounted by ``docker-compose.dev.yml`` so that code
+# changes are picked up without rebuilding.
+FROM docker.io/library/python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml
+
+WORKDIR /app
+
+# ``git`` is needed by ``searx.version`` to derive the version string from the
+# bind-mounted repository.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ./requirements.txt ./requirements-server.txt ./requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-server.txt -r requirements-dev.txt
+
+EXPOSE 8080
+
+CMD ["granian", "--interface", "wsgi", "--host", "0.0.0.0", "--port", "8080", "searx.webapp:app"]
