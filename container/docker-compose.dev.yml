@@ -15,6 +15,9 @@ services:
     build:
       context: ..
       dockerfile: container/Dockerfile.dev
+      args:
+        # set SEARXNG_DEV_DEPS=1 to also install nose2/black/pylint/basedpyright
+        INSTALL_DEV_DEPS: "${SEARXNG_DEV_DEPS:-0}"
     image: searxng-dev:local
     restart: unless-stopped
     ports:

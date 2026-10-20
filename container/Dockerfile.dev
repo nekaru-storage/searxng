@@ -18,8 +18,18 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt ./requirements-server.txt ./requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-server.txt -r requirements-dev.txt
+COPY ./requirements.txt ./requirements-server.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-server.txt
+
+# The test/lint tooling is optional: it is only needed when the unit tests are
+# run *inside* the container.  Build with ``--build-arg INSTALL_DEV_DEPS=1``
+# (or ``SEARXNG_DEV_DEPS=1`` for the compose file) to get nose2, black, pylint
+# and basedpyright; the default image stays small.
+ARG INSTALL_DEV_DEPS=0
+COPY ./requirements-dev.txt ./
+RUN if [ "$INSTALL_DEV_DEPS" = "1" ]; then \
+    pip install --no-cache-dir -r requirements-dev.txt; \
+    fi
 
 EXPOSE 8080
 
