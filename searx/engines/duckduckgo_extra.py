@@ -10,6 +10,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 from urllib.parse import quote_plus
 
+from searx.exceptions import SearxEngineResponseException
 from searx.result_types import EngineResults, MainResult, Image, Video
 from searx.utils import html_to_text, gen_useragent, extr
 from searx.network import get  # see https://github.com/searxng/searxng/issues/762
@@ -43,6 +44,19 @@ safesearch_cookies = {0: "-2", 1: None, 2: "1"}
 safesearch_args = {0: "1", 1: None, 2: "1"}
 
 search_path_map = {"images": "i", "videos": "v", "news": "news"}
+
+# DuckDuckGo answers the XHR endpoints (``i.js``, ``v.js`` and ``news.js``) with
+# an HTTP 202 *challenge* payload instead of results when the request does not
+# look like an XHR sent by a Chromium-based browser.  The client hints and
+# fetch metadata headers below are what makes DDG serve the JSON results.
+_XHR_HEADERS = {
+    "Sec-CH-UA": '"Not A;Brand";v="99", "Chromium";v="150", "Google Chrome";v="150"',
+    "Sec-CH-UA-Mobile": "?0",
+    "Sec-CH-UA-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+}
 
 _HTTP_User_Agent: str = gen_useragent()
 send_accept_language_header = False
@@ -104,6 +118,11 @@ def request(query: str, params: "OnlineParams") -> None:
     headers["Accept"] = "*/*"
     headers["Referer"] = "https://duckduckgo.com/"
     headers["Host"] = "duckduckgo.com"
+    # Note: ``fetch_vqd()`` above deliberately sends ``params["headers"]``
+    # *before* these XHR headers are added.  DDG serves the vqd value on the
+    # HTML page request, which must not look like an XHR; only the JSON
+    # endpoints need the client hints / fetch metadata.
+    headers.update(_XHR_HEADERS)
     # headers["X-Requested-With"] = "XMLHttpRequest"
 
     # DDG XHTMLRequest
@@ -183,7 +202,21 @@ def _news_result(result):
 
 def response(resp: "SXNG_Response") -> EngineResults:
     res = EngineResults()
-    res_json = resp.json()
+
+    try:
+        res_json = resp.json()
+    except ValueError as exc:
+        raise SearxEngineResponseException(
+            f"DuckDuckGo {ddg_category}: response is not valid JSON (HTTP {resp.status_code})"
+        ) from exc
+
+    if "results" not in res_json:
+        # DDG answers with a ``challenge`` payload (HTTP 202) when it detects
+        # automated requests; there is nothing we can parse in that case.
+        raise SearxEngineResponseException(
+            f"DuckDuckGo {ddg_category}: unexpected response (HTTP {resp.status_code}, "
+            f"challenge={res_json.get('challenge')!r})"
+        )
 
     for result in res_json['results']:
         if ddg_category == 'images':
