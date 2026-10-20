@@ -3,6 +3,8 @@
 
 from unittest.mock import Mock
 
+from lxml import html
+
 from searx.engines import bing_news
 from tests import SearxTestCase
 
@@ -22,7 +24,7 @@ CARD_HTML = """
 
 IMG_SRC = 'src="/th?id=ONUT.xyz"'
 CARD_ABSOLUTE_IMG = CARD_HTML.replace(IMG_SRC, 'src="https://cdn.example.com/pic.jpg"')
-CARD_WITHOUT_IMG_SRC = CARD_HTML.replace(" " + IMG_SRC, "")
+CARD_NO_IMG_SRC = CARD_HTML.replace(" " + IMG_SRC, "")
 
 
 def _resp(text):
@@ -30,30 +32,24 @@ def _resp(text):
     response = Mock()
     response.text = text
     if text.strip():
-
-        def _parse():
-            from lxml import html
-
-            return html.fromstring(text)
-
-        response.html.side_effect = _parse
+        response.html.side_effect = lambda: html.fromstring(text)
     else:
         # ``html.fromstring("")`` raises, so calling it here must be a failure.
         response.html.side_effect = AssertionError("html() called on an empty body")
     return response
 
 
-class BingNewsEmptyResponseTests(SearxTestCase):
+class BingNewsEmptyTests(SearxTestCase):
     """Bing answers HTTP 200 with an empty body when the query has no results."""
 
     def test_empty_body(self):
         self.assertEqual([], bing_news.response(_resp("")))
 
-    def test_whitespace_only_body(self):
+    def test_whitespace_only(self):
         self.assertEqual([], bing_news.response(_resp("  \r\n\t ")))
 
 
-class BingNewsResponseTests(SearxTestCase):
+class BingNewsCardTests(SearxTestCase):
     def test_newsitem_card(self):
         results = bing_news.response(_resp(CARD_HTML))
         self.assertEqual(1, len(results))
@@ -64,12 +60,12 @@ class BingNewsResponseTests(SearxTestCase):
         self.assertEqual("https://www.bing.com/th?id=ONUT.xyz", result["thumbnail"])
         self.assertIn("Example News", result["metadata"])
 
-    def test_absolute_thumbnail_is_not_prefixed(self):
+    def test_absolute_src(self):
         results = bing_news.response(_resp(CARD_ABSOLUTE_IMG))
         self.assertEqual(1, len(results))
         self.assertEqual("https://cdn.example.com/pic.jpg", results[0]["thumbnail"])
 
-    def test_card_without_thumbnail_source(self):
-        results = bing_news.response(_resp(CARD_WITHOUT_IMG_SRC))
+    def test_missing_src(self):
+        results = bing_news.response(_resp(CARD_NO_IMG_SRC))
         self.assertEqual(1, len(results))
         self.assertIsNone(results[0]["thumbnail"])
