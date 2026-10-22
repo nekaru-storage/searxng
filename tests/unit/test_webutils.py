@@ -72,6 +72,13 @@ class TestWebUtils(SearxTestCase):
                 'a string with class.',
                 '<span class="highlight">a</span> string with <span class="highlight">class</span>.',
             ),
+            (
+                # backslashes must survive unchanged: the replacement is a lambda,
+                # so its return value is inserted literally (no re escape needed)
+                r'Laminas\XmlRpc\Client',
+                r'Laminas\XmlRpc\Client docs',
+                r'<span class="highlight">Laminas\XmlRpc\Client</span> docs',
+            ),
         ]
     )
     def test_highlight_content_equal(self, query: str, content: str, expected: str):
