@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """wttr.in (weather forecast service)"""
 
+import logging
 import typing as t
 
 from urllib.parse import quote
@@ -8,6 +9,8 @@ from datetime import datetime
 
 from searx.result_types import EngineResults, WeatherAnswer
 from searx import weather
+
+logger = logging.getLogger(__name__)
 
 about = {
     "website": "https://wttr.in",
@@ -29,6 +32,7 @@ WWO_TO_CONDITION: dict[str, weather.WeatherConditionType] = {
     "119": "cloudy",
     "122": "fair",
     "143": "fair",
+    "152": "fog",  # smog: wttr.in reports it, the WWO table has no entry
     "176": "light rain showers",
     "179": "light snow showers",
     "182": "light sleet showers",
@@ -90,7 +94,7 @@ def _weather_data(location: weather.GeoLocation, data: dict[str, t.Any]):
     return WeatherAnswer.Item(
         location=location,
         temperature=weather.Temperature(val=tempC, unit="°C"),
-        condition=WWO_TO_CONDITION[data["weatherCode"]],
+        condition=WWO_TO_CONDITION.get(data["weatherCode"], "fog"),
         feels_like=weather.Temperature(val=data["FeelsLikeC"], unit="°C"),
         wind_from=weather.Compass(int(data["winddirDegree"])),
         wind_speed=weather.WindSpeed(val=data["windspeedKmph"], unit="km/h"),
@@ -106,7 +110,13 @@ def response(resp):
     if resp.status_code == 404:
         return res
 
-    json_data = resp.json()
+    try:
+        json_data = resp.json()
+    except ValueError:
+        # wttr.in answers with an HTML error page or an empty body when it is
+        # rate limited; that is not a reason to raise (#6883).
+        logger.warning("wttr.in returned a non-JSON body, status %s", resp.status_code)
+        return res
     geoloc = weather.GeoLocation.by_query(resp.search_params["query"])
 
     weather_answer = WeatherAnswer(

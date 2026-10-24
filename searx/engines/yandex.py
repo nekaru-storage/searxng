@@ -117,6 +117,12 @@ def request(query: str, params: "OnlineParams") -> None:
     elif search_type == 'images':
         params['url'] = f"{base_url_images}?{urlencode(args)}"
 
+    # From a Russian IP, yandex.com answers with a 302 to yandex.ru. Online
+    # engines do not follow redirects by default, so the engine parsed the
+    # empty 302 body and reported a parsing error (#6879).
+    params['allow_redirects'] = True
+    params['soft_max_redirects'] = 1
+
 
 def _parse_json_results(dom: html.HtmlElement) -> dict[str, t.Any]:
     # attempt to parse using xpath - finding element with "data-state" attribute
