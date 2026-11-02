@@ -2152,6 +2152,11 @@ engines:
       require_api_key: false
       results: JSON
 
+  - name: readerfunded
+    engine: readerfunded
+    shortcut: rfd
+    inactive: true
+
   - name: reuters
     engine: reuters
     shortcut: reu
