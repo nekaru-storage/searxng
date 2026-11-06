@@ -20,9 +20,32 @@ env:
   PYTHON_VERSION: "3.14"
 
 jobs:
+  gate:
+    name: Build gate
+    runs-on: ubuntu-26.04
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: "false"
+      - name: Read build flag
+        id: check
+        run: |
+          flag="$(cat build.txt 2>/dev/null | tr -d '[:space:]')"
+          echo "build.txt = '${flag}'"
+          if [ "${flag}" = "1" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
+    needs: gate
+    if: needs.gate.outputs.should_build == 'true'
     strategy:
       fail-fast: false
       matrix:
