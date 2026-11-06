@@ -177,3 +177,28 @@ jobs:
         env:
           DOCKER_TAG: "${{ needs.build.outputs.docker_tag }}"
         run: make container.push
+
+  reset-build-flag:
+    if: github.ref_name == 'master'
+    name: Reset build flag
+    runs-on: ubuntu-26.04
+    needs:
+      - release
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Set build.txt back to 0
+        run: |
+          printf '0\n' > build.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build.txt
+          git diff --cached --quiet || git commit -m "ci: reset build flag after container release"
+
+      - name: Push
+        run: git push origin HEAD:master

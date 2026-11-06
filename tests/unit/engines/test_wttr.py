@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# pylint: disable=missing-module-docstring,missing-class-docstring,invalid-name,too-few-public-methods
+
 """wttr.in engine: a body that is not JSON, and a weather code the table lacks."""
 
 import flask
@@ -5,10 +8,10 @@ from flask_babel import Babel
 
 from searx.engines import wttr
 
+from tests import SearxTestCase
+
 
 class _Response:
-    """The part of a requests response the engine uses."""
-
     def __init__(self, payload=None, status_code=200):
         self._payload = payload
         self.status_code = status_code
@@ -33,16 +36,16 @@ _CURRENT = {
 }
 
 
-def test_non_json_body_returns_no_results():
-    """#6883: a rate limited answer is an HTML page, not a crash."""
-    assert list(wttr.response(_Response())) == []
+class TestWttrEngine(SearxTestCase):
+    def test_non_json_body_returns_no_results(self):
+        """#6883: a rate limited answer is an HTML page, not a crash."""
+        assert not list(wttr.response(_Response()))
 
-
-def test_unknown_weather_code_does_not_raise():
-    """#6883: an unknown code must not take the whole answer down."""
-    app = flask.Flask(__name__)
-    Babel(app)  # the answer is built through gettext
-    with app.test_request_context("/search?q=Jakarta&language=en"):
-        results = list(wttr.response(_Response({"current_condition": [_CURRENT], "weather": []})))
-    assert results
-    assert results[0].current.condition == "fog"
+    def test_unknown_weather_code_does_not_raise(self):
+        """#6883: an unknown code must not take the whole answer down."""
+        app = flask.Flask(__name__)
+        Babel(app)  # the answer is built through gettext
+        with app.test_request_context("/search?q=Jakarta&language=en"):
+            results = list(wttr.response(_Response({"current_condition": [_CURRENT], "weather": []})))
+        assert results
+        assert results[0].current.condition == "fog"
