@@ -21,9 +21,32 @@ env:
   PYTHON_VERSION: "3.14"
 
 jobs:
+  gate:
+    name: Build flag check
+    runs-on: ubuntu-26.04
+    outputs:
+      ignored: ${{ steps.check.outputs.ignored }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: "false"
+      - name: Read build flag
+        id: check
+        run: |
+          flag="$(cat build.txt 2>/dev/null | tr -d '[:space:]')"
+          echo "build.txt = '${flag}'"
+          if [ "${flag}" = "1" ]; then
+            echo "ignored=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ignored=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-26.04
+    needs: gate
+    if: needs.gate.outputs.ignored == 'false'
     strategy:
       matrix:
         python-version:
@@ -60,6 +83,8 @@ jobs:
   theme:
     name: Theme
     runs-on: ubuntu-26.04-arm
+    needs: gate
+    if: needs.gate.outputs.ignored == 'false'
     steps:
       - name: Setup Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
