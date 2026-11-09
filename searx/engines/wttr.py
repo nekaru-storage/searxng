@@ -30,55 +30,55 @@ url = "https://wttr.in/{query}?format=j1&lang={lang}"
 #   https://github.com/chubin/wttr.in/blob/master/share/translations/en/conditions.txt
 # Each code is mapped to the closest searx.weather.WeatherConditionType.
 WWO_TO_CONDITION: dict[str, weather.WeatherConditionType] = {
-    "113": "clear sky",                 # Clear / Sunny
-    "116": "partly cloudy",             # Partly cloudy
-    "119": "cloudy",                    # Cloudy
-    "122": "cloudy",                    # Overcast
-    "143": "fog",                       # Mist
-    "152": "fog",                       # smog: wttr.in reports it, not in the WWO table
-    "176": "light rain showers",        # Patchy rain possible
-    "179": "light snow showers",        # Patchy snow possible
-    "182": "light sleet showers",       # Patchy sleet possible
-    "185": "light sleet",               # Patchy freezing drizzle possible
-    "200": "rain and thunder",          # Thundery outbreaks possible
-    "227": "snow",                      # Blowing snow
-    "230": "heavy snow",                # Blizzard
-    "248": "fog",                       # Fog
-    "260": "fog",                       # Freezing fog
-    "263": "light rain",                # Patchy light drizzle
-    "266": "light rain",                # Light drizzle
-    "281": "light sleet",               # Freezing drizzle
-    "284": "sleet",                     # Heavy freezing drizzle
-    "293": "light rain",                # Patchy light rain
-    "296": "light rain",                # Light rain
-    "299": "rain",                      # Moderate rain at times
-    "302": "rain",                      # Moderate rain
-    "305": "heavy rain",                # Heavy rain at times
-    "308": "heavy rain",                # Heavy rain
-    "311": "light sleet",               # Light freezing rain
-    "314": "sleet",                     # Moderate or heavy freezing rain
-    "317": "light sleet",               # Light sleet
-    "320": "heavy sleet",               # Moderate or heavy sleet
-    "323": "light snow",                # Patchy light snow
-    "326": "light snow",                # Light snow
-    "329": "snow",                      # Patchy moderate snow
-    "332": "snow",                      # Moderate snow
-    "335": "heavy snow",                # Patchy heavy snow
-    "338": "heavy snow",                # Heavy snow
-    "350": "sleet",                     # Ice pellets
-    "353": "light rain showers",        # Light rain shower
-    "356": "heavy rain showers",        # Moderate or heavy rain shower
-    "359": "heavy rain showers",        # Torrential rain shower
-    "362": "light sleet showers",       # Light sleet showers
-    "365": "heavy sleet showers",       # Moderate or heavy sleet showers
-    "368": "light snow showers",        # Light snow showers
-    "371": "heavy snow showers",        # Moderate or heavy snow showers
-    "374": "light sleet showers",       # Light showers of ice pellets
-    "377": "heavy sleet showers",       # Moderate or heavy showers of ice pellets
-    "386": "light rain and thunder",    # Patchy light rain with thunder
-    "389": "heavy rain and thunder",    # Moderate or heavy rain with thunder
-    "392": "light snow and thunder",    # Patchy light snow with thunder
-    "395": "heavy snow and thunder",    # Moderate or heavy snow with thunder
+    "113": "clear sky",  # Clear / Sunny
+    "116": "partly cloudy",  # Partly cloudy
+    "119": "cloudy",  # Cloudy
+    "122": "cloudy",  # Overcast
+    "143": "fog",  # Mist
+    "152": "fog",  # smog: wttr.in reports it, not in the WWO table
+    "176": "light rain showers",  # Patchy rain possible
+    "179": "light snow showers",  # Patchy snow possible
+    "182": "light sleet showers",  # Patchy sleet possible
+    "185": "light sleet",  # Patchy freezing drizzle possible
+    "200": "rain and thunder",  # Thundery outbreaks possible
+    "227": "snow",  # Blowing snow
+    "230": "heavy snow",  # Blizzard
+    "248": "fog",  # Fog
+    "260": "fog",  # Freezing fog
+    "263": "light rain",  # Patchy light drizzle
+    "266": "light rain",  # Light drizzle
+    "281": "light sleet",  # Freezing drizzle
+    "284": "sleet",  # Heavy freezing drizzle
+    "293": "light rain",  # Patchy light rain
+    "296": "light rain",  # Light rain
+    "299": "rain",  # Moderate rain at times
+    "302": "rain",  # Moderate rain
+    "305": "heavy rain",  # Heavy rain at times
+    "308": "heavy rain",  # Heavy rain
+    "311": "light sleet",  # Light freezing rain
+    "314": "sleet",  # Moderate or heavy freezing rain
+    "317": "light sleet",  # Light sleet
+    "320": "heavy sleet",  # Moderate or heavy sleet
+    "323": "light snow",  # Patchy light snow
+    "326": "light snow",  # Light snow
+    "329": "snow",  # Patchy moderate snow
+    "332": "snow",  # Moderate snow
+    "335": "heavy snow",  # Patchy heavy snow
+    "338": "heavy snow",  # Heavy snow
+    "350": "sleet",  # Ice pellets
+    "353": "light rain showers",  # Light rain shower
+    "356": "heavy rain showers",  # Moderate or heavy rain shower
+    "359": "heavy rain showers",  # Torrential rain shower
+    "362": "light sleet showers",  # Light sleet showers
+    "365": "heavy sleet showers",  # Moderate or heavy sleet showers
+    "368": "light snow showers",  # Light snow showers
+    "371": "heavy snow showers",  # Moderate or heavy snow showers
+    "374": "light sleet showers",  # Light showers of ice pellets
+    "377": "heavy sleet showers",  # Moderate or heavy showers of ice pellets
+    "386": "light rain and thunder",  # Patchy light rain with thunder
+    "389": "heavy rain and thunder",  # Moderate or heavy rain with thunder
+    "392": "light snow and thunder",  # Patchy light snow with thunder
+    "395": "heavy snow and thunder",  # Moderate or heavy snow with thunder
 }
 
 
