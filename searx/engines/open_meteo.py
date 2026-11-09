@@ -63,47 +63,49 @@ def request(query, params):
 # https://nrkno.github.io/yr-weather-symbols/
 
 WMO_TO_CONDITION: dict[int, weather.WeatherConditionType] = {
-    # 0	Clear sky
+    # 0	        Clear sky
     0: "clear sky",
-    # 1, 2, 3     Mainly clear, partly cloudy, and overcast
+    # 1, 2, 3    Mainly clear, partly cloudy, and overcast
     1: "fair",
     2: "partly cloudy",
     3: "cloudy",
-    # 45, 48      Fog and depositing rime fog
+    # 45, 48     Fog and depositing rime fog
     45: "fog",
     48: "fog",
-    # 51, 53, 55  Drizzle: Light, moderate, and dense intensity
+    # 51, 53, 55 Drizzle: Light, moderate, and dense intensity
     51: "light rain",
     53: "light rain",
     55: "light rain",
-    # 56, 57      Freezing Drizzle: Light and dense intensity
-    56: "light sleet showers",
-    57: "light sleet",
-    # 61, 63, 65  Rain: Slight, moderate and heavy intensity
+    # 56, 57     Freezing drizzle: Light and dense intensity
+    56: "light sleet",
+    57: "sleet",
+    # 61, 63, 65 Rain: Slight, moderate and heavy intensity
     61: "light rain",
     63: "rain",
     65: "heavy rain",
-    # 66, 67    Freezing Rain: Light and heavy intensity
-    66: "light sleet showers",
-    67: "light sleet",
-    # 71, 73, 75  Snow fall: Slight, moderate, and heavy intensity
-    71: "light sleet",
-    73: "sleet",
-    75: "heavy sleet",
-    # 77    Snow grains
+    # 66, 67     Freezing rain: Light and heavy intensity
+    66: "light sleet",
+    67: "sleet",
+    # 71, 73, 75 Snowfall: Slight, moderate, and heavy intensity
+    71: "light snow",
+    73: "snow",
+    75: "heavy snow",
+    # 77         Snow grains
     77: "snow",
-    # 80, 81, 82  Rain showers: Slight, moderate, and violent
+    # 80, 81, 82 Rain showers: Slight, moderate, and violent
     80: "light rain showers",
     81: "rain showers",
     82: "heavy rain showers",
-    # 85, 86      Snow showers slight and heavy
-    85: "snow showers",
+    # 85, 86     Snow showers slight and heavy
+    85: "light snow showers",
     86: "heavy snow showers",
-    # 95          Thunderstorm: Slight or moderate
+    # 95         Thunderstorm: slight or moderate
     95: "rain and thunder",
-    # 96, 99      Thunderstorm with slight and heavy hail
+    # 96, 99     Thunderstorm with slight and heavy hail
     96: "light snow and thunder",
     99: "heavy snow and thunder",
+    # 97         Heavy thunderstorm
+    97: "heavy rain and thunder",
 }
 
 
