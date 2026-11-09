@@ -32,36 +32,37 @@ categories = ["weather"]
 base_url = "https://duckduckgo.com/js/spice/forecast/{query}/{lang}"
 
 # adapted from https://gist.github.com/mikesprague/048a93b832e2862050356ca233ef4dc1
+# and https://developer.apple.com/documentation/weatherkit/weathercondition
 WEATHERKIT_TO_CONDITION: dict[str, weather.WeatherConditionType] = {
-    "BlowingDust": "fog",
+    "BlowingDust": "fog",  # blowing dust or sandstorm -> reduced visibility
     "Clear": "clear sky",
     "Cloudy": "cloudy",
     "Foggy": "fog",
     "Haze": "fog",
-    "MostlyClear": "clear sky",
-    "MostlyCloudy": "partly cloudy",
+    "MostlyClear": "fair",  # mostly clear
+    "MostlyCloudy": "cloudy",
     "PartlyCloudy": "partly cloudy",
     "Smoky": "fog",
-    "Breezy": "partly cloudy",
-    "Windy": "partly cloudy",
+    "Breezy": "partly cloudy",  # wind, no direct condition type
+    "Windy": "partly cloudy",  # wind, no direct condition type
     "Drizzle": "light rain",
     "HeavyRain": "heavy rain",
-    "IsolatedThunderstorms": "rain and thunder",
+    "IsolatedThunderstorms": "light rain and thunder",  # under 1/8 coverage
     "Rain": "rain",
-    "SunShowers": "rain",
-    "ScatteredThunderstorms": "heavy rain and thunder",
+    "SunShowers": "rain showers",  # rain with visible sun
+    "ScatteredThunderstorms": "rain and thunder",  # up to 50% coverage
     "StrongStorms": "heavy rain and thunder",
     "Thunderstorms": "rain and thunder",
-    "Frigid": "clear sky",
-    "Hail": "heavy rain",
-    "Hot": "clear sky",
+    "Frigid": "clear sky",  # temperature hazard, no condition type
+    "Hail": "sleet",
+    "Hot": "clear sky",  # temperature hazard, no condition type
     "Flurries": "light snow",
     "Sleet": "sleet",
-    "Snow": "light snow",
+    "Snow": "snow",
     "SunFlurries": "light snow",
     "WintryMix": "sleet",
     "Blizzard": "heavy snow",
-    "BlowingSnow": "heavy snow",
+    "BlowingSnow": "snow",
     "FreezingDrizzle": "light sleet",
     "FreezingRain": "sleet",
     "HeavySnow": "heavy snow",
