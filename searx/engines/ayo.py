@@ -36,22 +36,44 @@ base_url = "https://search.ayo.de"
 CACHE: EngineCache
 """Cache for storing the cookies and after solving an Anubis CAPTCHA."""
 
+COOKIE_TTL = 30 * 60
+"""Anubis cookies are short lived; refresh them long before the cache expires."""
+
 
 def setup(engine_settings: dict[str, str]):
     global CACHE  # pylint:disable=global-statement
     CACHE = EngineCache(engine_settings["name"])
 
 
-def request(query: str, params: "OnlineParams"):
-    if cached_cookies := CACHE.get("cookies"):
-        cookies = cached_cookies
-    else:
-        challenge_resp = get(base_url)
-        cookies = solve_anubis(challenge_resp)
-        CACHE.set("cookies", cookies)
+def _cookies(force: bool = False):
+    """Return the Anubis cookies, solving the challenge when there is none cached.
 
-    search_resp = get(f"{base_url}/search?q={quote_plus(query)}", cookies=cookies)
-    csrf_token = extract_text(eval_xpath(search_resp.html(), "//input[@name='_token']/@value"))
+    ``force`` drops the cached cookie; Anubis rotates its cookies, so a stale
+    one must not be reused for the whole :py:obj:`EngineCache` lifetime.
+    """
+    if not force and (cached := CACHE.get("cookies")):
+        return cached
+
+    cookies = solve_anubis(get(base_url))
+    CACHE.set("cookies", cookies, expire=COOKIE_TTL)
+    return cookies
+
+
+def _search_page(query: str, cookies):
+    resp = get(f"{base_url}/search?q={quote_plus(query)}", cookies=cookies)
+    token = extract_text(eval_xpath(resp.html(), "//input[@name='_token']/@value"))
+    return token, resp
+
+
+def request(query: str, params: "OnlineParams"):
+    cookies = _cookies()
+    csrf_token, search_resp = _search_page(query, cookies)
+
+    if not csrf_token:
+        # the cached Anubis cookie expired in the meantime -> repeat once with a new one
+        cookies = _cookies(force=True)
+        csrf_token, search_resp = _search_page(query, cookies)
+
     if not csrf_token:
         raise SearxEngineAPIException("csrf token not found")
 
