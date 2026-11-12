@@ -139,6 +139,14 @@ class DogpileResponseTests(SearxTestCase):
         self.assertEqual(1, len(results))
         self.assertEqual("https://example.org", results[0]["url"])
 
+    def test_missing_optional_fields(self):
+        # every optional field is read through dict.get(), a sparse result must
+        # not abort the whole response
+        payload = {"results": [{"clickUrl": "https://example.org"}]}
+        for category in ("search", "news", "videos", "images"):
+            with patch.object(dogpile, "dogpile_categ", category):
+                self.assertEqual(1, len(dogpile.response(_response(payload))), category)
+
     def test_general(self):
         payload = {"results": [{"clickUrl": "https://example.org", "title": "<b>Example</b>", "description": "text"}]}
         results = dogpile.response(_response(payload))
@@ -164,7 +172,7 @@ class DogpileResponseTests(SearxTestCase):
         self.assertEqual(1792443600, result["publishedDate"].timestamp())
 
     def test_news_escaped_markup(self):
-        # real headlines are HTML escaped, see the ``&lt;b&gt;`` in
+        # news headlines arrive HTML escaped, see ``&lt;b&gt;`` in
         # https://www.dogpile.com/api/news
         self.setattr4test(dogpile, "dogpile_categ", "news")
         payload = {
@@ -172,19 +180,18 @@ class DogpileResponseTests(SearxTestCase):
                 {
                     "clickUrl": "https://example.org/news",
                     "title": "&lt;b&gt;Indonesia&lt;/b&gt; VP resigns",
-                    "description": "&lt;b&gt;Jakarta&lt;/b&gt; - summary",
+                    "description": "&lt;b&gt;Jakarta&lt;/b&gt; - summary &amp; more",
                 }
             ]
         }
         result = dogpile.response(_response(payload))[0]
         self.assertEqual("Indonesia VP resigns", result["title"])
-        self.assertEqual("Jakarta - summary", result["content"])
+        self.assertEqual("Jakarta - summary & more", result["content"])
 
-    def test_general_literal_markup(self):
-        # the other categories carry markup, not entities: escaped markup is
-        # left visible as text instead of being stripped like in news
-        payload = {"results": [{"clickUrl": "https://example.org", "title": "&lt;b&gt;Example&lt;/b&gt;"}]}
-        self.assertEqual("<b>Example</b>", dogpile.response(_response(payload))[0]["title"])
+    def test_general_markup(self):
+        # the other categories send the markup itself, so it is stripped as is
+        payload = {"results": [{"clickUrl": "https://example.org", "title": "<b>Example</b> &amp; more"}]}
+        self.assertEqual("Example & more", dogpile.response(_response(payload))[0]["title"])
 
     def test_videos(self):
         self.setattr4test(dogpile, "dogpile_categ", "videos")
@@ -195,14 +202,30 @@ class DogpileResponseTests(SearxTestCase):
                     "title": "Video",
                     "description": "About",
                     "thumbnailUrl": "https://example.org/t.jpg",
+                    # field types as sent by https://www.dogpile.com/api/videos
                     "duration": 90,
                     "viewCount": 1200,
+                    "publishDate": "2026-11-10T19:30:33.0000000",
                 }
             ]
         }
         result = dogpile.response(_response(payload))[0]
         self.assertEqual(datetime.timedelta(seconds=90), result["length"])
         self.assertEqual("1K", result["views"])
+        self.assertEqual(datetime.datetime(2026, 11, 10, 19, 30, 33), result["publishedDate"])
+
+    def test_videos_date_fraction(self):
+        # the API sends 7 fractional digits; Python 3.10 only parses 6
+        self.setattr4test(dogpile, "dogpile_categ", "videos")
+        payload = {
+            "results": [
+                {"clickUrl": "https://example.org/v", "publishDate": "2026-11-10T19:30:33.1234567"},
+                {"clickUrl": "https://example.org/w", "publishDate": "2026-11-10T19:30:33.0000000"},
+            ]
+        }
+        first, second = dogpile.response(_response(payload))
+        self.assertEqual(datetime.datetime(2026, 11, 10, 19, 30, 33, 123456), first["publishedDate"])
+        self.assertEqual(datetime.datetime(2026, 11, 10, 19, 30, 33), second["publishedDate"])
 
     def test_images(self):
         self.setattr4test(dogpile, "dogpile_categ", "images")

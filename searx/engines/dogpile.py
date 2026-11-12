@@ -80,8 +80,7 @@ def _obtain_token() -> str:
     )
     if not resp.ok:
         raise SearxEngineAPIException("failed to obtain dogpile token")
-    payload = resp.json()
-    token = payload.get("token") if isinstance(payload, dict) else None
+    token = resp.json().get("token")
     if not token:
         raise SearxEngineAPIException("failed to obtain dogpile token")
     CACHE.set("token", token, expire=240)  # the token itself is valid for 300s
@@ -102,32 +101,6 @@ def request(query: str, params: "OnlineParams"):
     params["json"] = {"q": query, "qadf": safe_search_map[params["safesearch"]], "page": params["pageno"]}
 
 
-def _as_number(value: t.Any) -> float | None:
-    """Return *value* as a number, or ``None`` if it is not numeric."""
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return value
-    if isinstance(value, str):
-        try:
-            return float(value.replace(",", "").strip())
-        except ValueError:
-            return None
-    return None
-
-
-def _as_datetime(value: t.Any, from_timestamp: bool = False) -> datetime | None:
-    """Convert an API date field into a :py:obj:`datetime`, ``None`` if unknown."""
-    if from_timestamp and (number := _as_number(value)) is not None:
-        return datetime.fromtimestamp(number, tz=timezone.utc)
-    if isinstance(value, str) and value:
-        try:
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return None
-    return None
-
-
 def response(resp: "SXNG_Response"):
     res = EngineResults()
 
@@ -140,50 +113,56 @@ def response(resp: "SXNG_Response"):
         if not url:
             continue
 
+        # news headlines arrive escaped (``&lt;b&gt;``), the other categories
+        # send the markup itself
+        if dogpile_categ == "news":
+            title = html_to_text(html.unescape(result.get("title") or ""))
+            content = html_to_text(html.unescape(result.get("description") or ""))
+        else:
+            title = html_to_text(result.get("title") or "")
+            content = html_to_text(result.get("description") or "")
+        thumbnail = result.get("thumbnailUrl") or ""
+
         if dogpile_categ == "search":
-            res.add(
-                res.types.MainResult(
-                    url=url,
-                    title=html_to_text(result.get("title") or ""),
-                    content=html_to_text(result.get("description") or ""),
-                )
-            )
+            res.add(res.types.MainResult(url=url, title=title, content=content))
         elif dogpile_categ == "news":
-            # news headlines arrive HTML escaped (``&lt;b&gt;``), the other
-            # categories carry the markup itself; unescape before stripping it
+            date = result.get("date")
             res.add(
                 res.types.MainResult(
                     url=url,
-                    title=html_to_text(html.unescape(result.get("title") or "")),
-                    content=html_to_text(html.unescape(result.get("description") or "")),
-                    thumbnail=result.get("thumbnailUrl") or "",
-                    publishedDate=_as_datetime(result.get("date"), from_timestamp=True),
+                    title=title,
+                    content=content,
+                    thumbnail=thumbnail,
+                    publishedDate=datetime.fromtimestamp(date, tz=timezone.utc) if date else None,
                 )
             )
         elif dogpile_categ == "videos":
-            duration = _as_number(result.get("duration"))
-            views = _as_number(result.get("viewCount"))
+            published = result.get("publishDate")
+            duration = result.get("duration")
+            views = result.get("viewCount")
             res.add(
                 res.types.Video(
                     url=url,
-                    title=html_to_text(result.get("title") or ""),
-                    content=html_to_text(result.get("description") or ""),
-                    thumbnail=result.get("thumbnailUrl") or "",
-                    publishedDate=_as_datetime(result.get("publishDate")),
+                    title=title,
+                    content=content,
+                    thumbnail=thumbnail,
+                    # the API sends 7 fractional digits, Python 3.10's parser
+                    # accepts at most 6
+                    publishedDate=datetime.fromisoformat(published[:26]) if published else None,
                     length=timedelta(seconds=duration) if duration is not None else None,
                     views=humanize_number(views) if views is not None else "",
                 )
             )
         elif dogpile_categ == "images":
-            width = _as_number(result.get("width"))
-            height = _as_number(result.get("height"))
+            width = result.get("width")
+            height = result.get("height")
             res.add(
                 res.types.Image(
                     url=result.get("altClickUrl") or url,
-                    title=html_to_text(result.get("title") or ""),
-                    content=html_to_text(result.get("description") or ""),
+                    title=title,
+                    content=content,
                     img_src=url,
-                    thumbnail_src=result.get("thumbnailUrl") or "",
+                    thumbnail_src=thumbnail,
                     resolution=f"{width:g}x{height:g}" if width and height else "",
                     img_format=result.get("format") or "",
                 )
