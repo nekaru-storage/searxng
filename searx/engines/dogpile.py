@@ -61,7 +61,7 @@ CACHE: EngineCache
 
 
 def setup(_: dict[str, t.Any]) -> bool | None:
-    if dogpile_categ not in ("search", "images", "videos", "news"):
+    if dogpile_categ not in referer_map:
         raise ValueError("invalid search type: %s" % dogpile_categ)
     global CACHE  # pylint: disable=global-statement
     CACHE = EngineCache("dogpile")  # one token for images/videos/news
@@ -74,16 +74,17 @@ def _obtain_token() -> str:
         return token
     resp = post(
         f"{base_url}/api/token/refresh",
-        headers={"Origin": base_url, "Sec-Fetch-Mode": "cors", "Referer": f"{base_url}/"},
+        headers={"Origin": base_url, "Sec-Fetch-Mode": "cors", "Referer": f"{base_url}{referer_map['search']}"},
         cookies={"dp_api_token": "1"},
         impersonate=_IMPERSONATE,
     )
     if not resp.ok:
         raise SearxEngineAPIException("failed to obtain dogpile token")
-    token = resp.json().get("token") if isinstance(resp.json(), dict) else None
+    payload = resp.json()
+    token = payload.get("token") if isinstance(payload, dict) else None
     if not token:
         raise SearxEngineAPIException("failed to obtain dogpile token")
-    CACHE.set("token", token, expire=240)  # 300s ttl
+    CACHE.set("token", token, expire=240)  # the token itself is valid for 300s
     return token
 
 
@@ -139,19 +140,23 @@ def response(resp: "SXNG_Response"):
         if not url:
             continue
 
-        title = html_to_text(result.get("title") or "")
-        content = html_to_text(result.get("description") or "")
-        thumbnail = result.get("thumbnailUrl") or ""
-
         if dogpile_categ == "search":
-            res.add(res.types.MainResult(url=url, title=title, content=content))
+            res.add(
+                res.types.MainResult(
+                    url=url,
+                    title=html_to_text(result.get("title") or ""),
+                    content=html_to_text(result.get("description") or ""),
+                )
+            )
         elif dogpile_categ == "news":
+            # news headlines arrive HTML escaped (``&lt;b&gt;``), the other
+            # categories carry the markup itself; unescape before stripping it
             res.add(
                 res.types.MainResult(
                     url=url,
                     title=html_to_text(html.unescape(result.get("title") or "")),
                     content=html_to_text(html.unescape(result.get("description") or "")),
-                    thumbnail=thumbnail,
+                    thumbnail=result.get("thumbnailUrl") or "",
                     publishedDate=_as_datetime(result.get("date"), from_timestamp=True),
                 )
             )
@@ -161,9 +166,9 @@ def response(resp: "SXNG_Response"):
             res.add(
                 res.types.Video(
                     url=url,
-                    title=title,
-                    content=content,
-                    thumbnail=thumbnail,
+                    title=html_to_text(result.get("title") or ""),
+                    content=html_to_text(result.get("description") or ""),
+                    thumbnail=result.get("thumbnailUrl") or "",
                     publishedDate=_as_datetime(result.get("publishDate")),
                     length=timedelta(seconds=duration) if duration is not None else None,
                     views=humanize_number(views) if views is not None else "",
@@ -175,10 +180,10 @@ def response(resp: "SXNG_Response"):
             res.add(
                 res.types.Image(
                     url=result.get("altClickUrl") or url,
-                    title=title,
-                    content=content,
+                    title=html_to_text(result.get("title") or ""),
+                    content=html_to_text(result.get("description") or ""),
                     img_src=url,
-                    thumbnail_src=thumbnail,
+                    thumbnail_src=result.get("thumbnailUrl") or "",
                     resolution=f"{width:g}x{height:g}" if width and height else "",
                     img_format=result.get("format") or "",
                 )

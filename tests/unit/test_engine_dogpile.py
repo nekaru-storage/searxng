@@ -122,6 +122,13 @@ class DogpileTokenTests(SearxTestCase):
             dogpile._obtain_token()  # pylint: disable=protected-access
 
 
+class DogpileSetupTests(SearxTestCase):
+    def test_invalid_category(self):
+        self.setattr4test(dogpile, "dogpile_categ", "shopping")
+        with self.assertRaises(ValueError):
+            dogpile.setup({})
+
+
 class DogpileResponseTests(SearxTestCase):
     def setUp(self):
         super().setUp()
@@ -155,6 +162,29 @@ class DogpileResponseTests(SearxTestCase):
         self.assertEqual("Headline & more", result["title"])
         self.assertEqual("https://example.org/t.jpg", result["thumbnail"])
         self.assertEqual(1792443600, result["publishedDate"].timestamp())
+
+    def test_news_escaped_markup(self):
+        # real headlines are HTML escaped, see the ``&lt;b&gt;`` in
+        # https://www.dogpile.com/api/news
+        self.setattr4test(dogpile, "dogpile_categ", "news")
+        payload = {
+            "results": [
+                {
+                    "clickUrl": "https://example.org/news",
+                    "title": "&lt;b&gt;Indonesia&lt;/b&gt; VP resigns",
+                    "description": "&lt;b&gt;Jakarta&lt;/b&gt; - summary",
+                }
+            ]
+        }
+        result = dogpile.response(_response(payload))[0]
+        self.assertEqual("Indonesia VP resigns", result["title"])
+        self.assertEqual("Jakarta - summary", result["content"])
+
+    def test_general_literal_markup(self):
+        # the other categories carry markup, not entities: escaped markup is
+        # left visible as text instead of being stripped like in news
+        payload = {"results": [{"clickUrl": "https://example.org", "title": "&lt;b&gt;Example&lt;/b&gt;"}]}
+        self.assertEqual("<b>Example</b>", dogpile.response(_response(payload))[0]["title"])
 
     def test_videos(self):
         self.setattr4test(dogpile, "dogpile_categ", "videos")
