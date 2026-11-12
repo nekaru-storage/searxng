@@ -15,3 +15,14 @@ search:
 server:
   secret_key: "dev-only-secret-key"
   limiter: false
+
+# the dogpile engines are ``inactive`` in the default settings
+engines:
+  - name: dogpile
+    inactive: false
+  - name: dogpile images
+    inactive: false
+  - name: dogpile videos
+    inactive: false
+  - name: dogpile news
+    inactive: false

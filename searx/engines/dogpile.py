@@ -38,6 +38,24 @@ dogpile_categ = "search"
 base_url = "https://www.dogpile.com"
 safe_search_map = {0: "none", 1: "moderate", 2: "heavy"}
 
+referer_map = {
+    "search": "/",
+    "images": "/images",
+    "videos": "/videos",
+    "news": "/news",
+}
+"""The API answers ``403`` (CloudFront "Request blocked") unless the ``Referer``
+matches the page the request would originate from."""
+
+_IMPERSONATE = "firefox"
+"""TLS fingerprint used by curl_cffi.
+
+Dogpile's edge (CloudFront) answers ``403 Request blocked`` to the fingerprint
+of curl_cffi's ``chrome`` profile -- which is SearXNG's default -- while the
+``firefox`` profile is served normally.  The profile also supplies a matching
+Firefox ``User-Agent`` and header set.
+"""
+
 CACHE: EngineCache
 """Cache for the API token from dogpile"""
 
@@ -56,8 +74,9 @@ def _obtain_token() -> str:
         return token
     resp = post(
         f"{base_url}/api/token/refresh",
-        headers={"Origin": base_url, "Sec-Fetch-Mode": "cors"},
+        headers={"Origin": base_url, "Sec-Fetch-Mode": "cors", "Referer": f"{base_url}/"},
         cookies={"dp_api_token": "1"},
+        impersonate=_IMPERSONATE,
     )
     if not resp.ok:
         raise SearxEngineAPIException("failed to obtain dogpile token")
@@ -71,9 +90,12 @@ def _obtain_token() -> str:
 def request(query: str, params: "OnlineParams"):
     params["url"] = f"{base_url}/api/{dogpile_categ}"
     params["headers"]["Origin"] = base_url
+    # without a matching Referer the API answers 403 (CloudFront "Request blocked")
+    params["headers"]["Referer"] = f"{base_url}{referer_map[dogpile_categ]}"
     params["headers"]["Sec-Fetch-Mode"] = "cors"
     params["cookies"]["dp_api_token"] = "1"
     params["headers"]["x-dogpile-token"] = _obtain_token()
+    params["impersonate"] = _IMPERSONATE
 
     params["method"] = "POST"
     params["json"] = {"q": query, "qadf": safe_search_map[params["safesearch"]], "page": params["pageno"]}
