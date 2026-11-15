@@ -10,6 +10,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 from urllib.parse import quote_plus
 
+from searx.exceptions import SearxEngineResponseException
 from searx.result_types import EngineResults, MainResult, Image, Video
 from searx.utils import html_to_text, extr
 from searx.network import get  # see https://github.com/searxng/searxng/issues/762
@@ -180,7 +181,21 @@ def _news_result(result):
 
 def response(resp: "SXNG_Response") -> EngineResults:
     res = EngineResults()
-    res_json = resp.json()
+
+    try:
+        res_json = resp.json()
+    except ValueError as exc:
+        raise SearxEngineResponseException(
+            f"DuckDuckGo {ddg_category}: response is not valid JSON (HTTP {resp.status_code})"
+        ) from exc
+
+    if "results" not in res_json:
+        # DDG answers with a ``challenge`` payload (HTTP 202) when it detects
+        # automated requests; there is nothing we can parse in that case.
+        raise SearxEngineResponseException(
+            f"DuckDuckGo {ddg_category}: unexpected response (HTTP {resp.status_code}, "
+            f"challenge={res_json.get('challenge')!r})"
+        )
 
     for result in res_json['results']:
         if ddg_category == 'images':

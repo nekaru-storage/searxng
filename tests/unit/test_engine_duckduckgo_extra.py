@@ -51,8 +51,10 @@ def _response(payload, status_code: int = 200):
 
 class DuckDuckGoExtraRequestTests(SearxTestCase):
     """The XHR endpoints (``i.js``, ``v.js``, ``news.js``) answer with an HTTP
-    202 *challenge* payload instead of results when the request lacks the
-    client hints / fetch metadata a Chromium based browser sends."""
+    202 *challenge* payload instead of results when the request does not look
+    like the browser it claims to be.  Upstream's fix asks curl_cffi for a
+    Firefox fingerprint (TLS, HTTP/2 and UA together) instead of faking
+    Chromium client hints next to a generated User-Agent."""
 
     def setUp(self):
         super().setUp()
@@ -73,28 +75,32 @@ class DuckDuckGoExtraRequestTests(SearxTestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_xhr_headers(self):
+    def test_impersonates_firefox(self):
         params = _params()
         duckduckgo_extra.request("cute cats", params)
         headers = params["headers"]
-        self.assertEqual('"Not A;Brand";v="99", "Chromium";v="150", "Google Chrome";v="150"', headers["Sec-CH-UA"])
-        self.assertEqual("?0", headers["Sec-CH-UA-Mobile"])
-        self.assertEqual('"Windows"', headers["Sec-CH-UA-Platform"])
-        self.assertEqual("empty", headers["Sec-Fetch-Dest"])
-        self.assertEqual("cors", headers["Sec-Fetch-Mode"])
-        self.assertEqual("same-origin", headers["Sec-Fetch-Site"])
+        # A Firefox fingerprint replaces the Chromium client hints this fork used
+        # to fake: a Firefox User-Agent next to Chrome hints is exactly the
+        # mismatch that earns the 202 challenge these endpoints keep answering.
+        self.assertEqual("firefox", params["impersonate"])
+        for name in ("Sec-CH-UA", "Sec-CH-UA-Mobile", "Sec-CH-UA-Platform", "User-Agent"):
+            self.assertNotIn(name, headers)
         self.assertEqual("https://duckduckgo.com/", headers["Referer"])
         self.assertEqual("duckduckgo.com", headers["Host"])
         self.assertEqual("*/*", headers["Accept"])
 
-    def test_user_agent_is_stable(self):
-        # the vqd value is bound to the User-Agent, it must not change between
-        # requests, otherwise the cached vqd is useless
+    def test_impersonation_is_stable(self):
+        # the vqd value is bound to the impersonate mode, so the mode must not
+        # change between requests, and no per-request User-Agent may come back
+        # (the vqd cache key no longer includes one).
         first = _params()
         second = _params()
         duckduckgo_extra.request("cute cats", first)
         duckduckgo_extra.request("cute cats", second)
-        self.assertEqual(first["headers"]["User-Agent"], second["headers"]["User-Agent"])
+        self.assertEqual("firefox", first["impersonate"])
+        self.assertEqual(first["impersonate"], second["impersonate"])
+        self.assertNotIn("User-Agent", first["headers"])
+        self.assertNotIn("User-Agent", second["headers"])
 
     def test_images_url(self):
         params = _params()
