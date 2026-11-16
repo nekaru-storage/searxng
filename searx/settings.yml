@@ -2073,9 +2073,15 @@ engines:
     timeout: 5
     inactive: true
 
+  # PyPI's /search route now serves a Fastly "Client Challenge" (a JS
+  # proof-of-work) to every non-browser client from a datacenter IP, so the
+  # HTML parser can never reach the results and the engine silently returns
+  # zero. curl_cffi browser impersonation does not pass it either. Disabled
+  # until PyPI stops gating the search route.
   - name: pypi
     shortcut: pypi
     engine: pypi
+    disabled: true
 
   - name: quark
     quark_category: general
