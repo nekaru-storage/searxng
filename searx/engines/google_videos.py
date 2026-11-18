@@ -4,7 +4,7 @@
 import typing as t
 
 from searx.engines.google import fetch_traits  # pylint: disable=unused-import
-from searx.engines.google import google_request, unwrap_google_url, wml_dom
+from searx.engines.google import google_request, response_dom, unwrap_google_url
 from searx.result_types import EngineResults
 from searx.utils import (
     eval_xpath_getindex,
@@ -52,48 +52,18 @@ def request(query: str, params: "OnlineParams") -> None:
 
 def response(resp: "SXNG_Response") -> EngineResults:
     results = EngineResults()
-    seen = set()
-
-    # Google serves the video tab with the same result card as the web tab
-    # (``Gx5Zad`` block, ``h3.zBAuLc`` title); the former ``zMzFAb`` /
-    # ``CVA68e`` / ``fuLhoc`` markup no longer exists.
-    for block in eval_xpath_list(wml_dom(resp), '//div[contains(@class, "Gx5Zad")]'):
-        title_tag = eval_xpath_getindex(block, './/h3[contains(@class, "zBAuLc")]', 0, default=None)
-        if title_tag is None:
+    dom = response_dom(resp)
+    for card in eval_xpath_list(dom, '//div[contains(@class, "zMzFAb") and .//a[contains(@class, "fuLhoc")]]'):
+        url = unwrap_google_url(eval_xpath_getindex(card, './/a[contains(@class, "fuLhoc")]/@href', 0))
+        title = extract_text(eval_xpath_getindex(card, './/span[contains(@class, "CVA68e")]', 0, default=""))
+        if not title:
             continue
-        title = extract_text(title_tag)
-
-        raw_url = eval_xpath_getindex(
-            block,
-            './/a[contains(@href, "/url?") and .//h3[contains(@class, "zBAuLc")]]/@href',
-            0,
-            default=None,
-        )
-        if raw_url is None:
-            continue
-
-        url = unwrap_google_url(raw_url)
-        if not url.startswith("http") or url in seen:
-            continue
-
-        thumbnail = eval_xpath_getindex(block, './/img[contains(@src, "encrypted-tbn")]/@src', 0, default="") or ""
-        if "/default.jpg" in thumbnail:
-            thumbnail = thumbnail.split("?")[0].replace("/default.jpg", "/hqdefault.jpg")
-
         length = None
-        for span in eval_xpath_list(block, './/span[contains(@class, "MDvRSc")]'):
-            length = parse_duration_string(extract_text(span) or "")
+        for span in eval_xpath_list(card, './/span[contains(@class, "YVIcad")]'):
+            length = parse_duration_string(extract_text(span))
             if length:
                 break
-
-        seen.add(url)
-        results.add(
-            results.types.Video(
-                url=url,
-                title=title,
-                thumbnail=thumbnail,
-                length=length,
-            )
-        )
+        thumbnail = eval_xpath_getindex(card, './/img[contains(@class, "SygO9d")]/@src', 0, default="")
+        results.add(results.types.Video(url=url, title=title, length=length, thumbnail=thumbnail))
 
     return results

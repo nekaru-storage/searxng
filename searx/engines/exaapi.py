@@ -33,11 +33,10 @@ Optional settings are:
 The API supports SafeSearch and region-aware results.
 """
 
+import datetime as dt
 import typing as t
-from datetime import datetime, timezone
 
 from dateutil import parser
-from dateutil.relativedelta import relativedelta
 
 from searx.exceptions import SearxEngineAPIException
 from searx.result_types import EngineResults
@@ -67,11 +66,11 @@ categories = ["general", "web"]
 safesearch = True
 time_range_support = True
 
-time_range_dict = {
-    "day": relativedelta(days=1),
-    "week": relativedelta(weeks=1),
-    "month": relativedelta(months=1),
-    "year": relativedelta(years=1),
+time_delta_dict = {
+    "day": dt.timedelta(days=1),
+    "week": dt.timedelta(weeks=1),
+    "month": dt.timedelta(days=30),
+    "year": dt.timedelta(days=365),
 }
 
 base_url = "https://api.exa.ai/search"
@@ -122,9 +121,8 @@ def request(query: str, params: "OnlineParams") -> None:
         "contents": _contents_payload(),
     }
 
-    time_range = params["time_range"]
-    if time_range:
-        cutoff = datetime.now(timezone.utc) - time_range_dict[time_range]
+    if time_range := params["time_range"]:
+        cutoff = dt.datetime.now(dt.UTC) - time_delta_dict[time_range]
         body["startPublishedDate"] = cutoff.isoformat()
 
     # Apply SafeSearch if enabled
