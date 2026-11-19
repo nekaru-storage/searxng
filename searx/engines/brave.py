@@ -124,13 +124,17 @@ from collections.abc import Callable
 from urllib.parse import urlencode
 
 from dateutil import parser
+from lxml import html
+from lxml.etree import ParserError
 
 from searx import locales, logger
 from searx.enginelib.traits import EngineTraits
 from searx.exceptions import SearxEngineResponseException
+from searx.network import Request, multi_requests
 from searx.result_types import EngineResults, MainResult, Video
 from searx.result_types.image import Image
 from searx.utils import (
+    eval_xpath_getindex,
     html_to_text,
     js_find_matching_bracket,
     js_obj_str_to_json_str,
@@ -337,6 +341,88 @@ def extract_json_data(text: str) -> dict[str, t.Any]:
     return json.loads(json_str)
 
 
+CLOAKED_URL_RE = re.compile(r"^/go/v1/[A-Za-z0-9_-]{40,}$")
+"""Brave cloaks the result links of some pages as ``/go/v1/<token>``.  The token
+is opaque, only Brave's redirect endpoint knows the destination."""
+
+DESTINATION_XPATH = ".//a[contains(@class, 'destination')]/@href"
+"""Destination URL embedded in Brave's "Check this link" interstitial."""
+
+brave_resolve_cloaked_urls: bool = True
+"""Look up the destination of the cloaked ``/go/v1`` result links.
+
+Brave cloaks the links to make bulk extraction expensive and to count the
+requests per results page (`URL cloaking scheme`_), hence the lookup costs one
+extra HTTP request per result.  Without the lookup the results point to Brave's
+redirect endpoint and the browser resolves the link when the user clicks it.
+
+.. _URL cloaking scheme: https://brave.com/blog/google-goto-anti-scraping/
+"""
+
+
+def _resolve_cloaked_urls(urls: list[str], resp: "SXNG_Response") -> dict[str, str]:
+    """Look up the destinations of the cloaked ``/go/v1`` links in ``urls``.
+
+    Brave answers the redirect endpoint either with a ``302`` whose ``Location``
+    header is the destination, or with a "Check this link" interstitial that
+    contains the destination.  The requests are sent in parallel and replay the
+    cookies and the referer of the results page request, otherwise Brave answers
+    with the interstitial.  A link that can not be resolved is missing in the
+    returned mapping.
+    """
+    cloaked = [url for url in dict.fromkeys(urls) if CLOAKED_URL_RE.match(url)]
+    if not cloaked:
+        return {}
+
+    params = resp.search_params
+    responses = multi_requests(
+        [
+            Request.get(
+                base_url.rstrip("/") + url,
+                allow_redirects=False,
+                raise_for_httperror=False,
+                cookies=params["cookies"],
+                headers={"Referer": params["url"]},
+            )
+            for url in cloaked
+        ]
+    )
+
+    resolved: dict[str, str] = {}
+    for url, http_response in zip(cloaked, responses):
+        if isinstance(http_response, Exception):
+            logger.warning("can not resolve cloaked URL: %s", http_response)
+            continue
+        destination = http_response.headers.get("location")
+        if not destination and http_response.status_code == 200 and http_response.text:
+            try:
+                dom = html.fromstring(http_response.text)
+            except ParserError:
+                continue
+            destination = eval_xpath_getindex(dom, DESTINATION_XPATH, 0, default=None)
+        if isinstance(destination, str) and destination.startswith(("http://", "https://")):
+            resolved[url] = destination
+    return resolved
+
+
+def resolve_result_urls(results: EngineResults, resp: "SXNG_Response", *, lookup: bool) -> None:
+    """Replace the cloaked ``/go/v1`` links of the results in place.
+
+    With ``lookup`` the destination of each link is requested from Brave (see
+    :py:obj:`_resolve_cloaked_urls`), otherwise the links are rewritten to the
+    absolute URL of Brave's redirect endpoint.  A link that can not be resolved
+    is rewritten the same way, so that it still works in the browser.
+    """
+    urls = [result["url"] or "" for result in results]
+    resolved = _resolve_cloaked_urls(urls, resp) if lookup else {}
+
+    for result, url in zip(results, urls):
+        if url in resolved:
+            result["url"] = resolved[url]
+        elif CLOAKED_URL_RE.match(url):
+            result["url"] = base_url.rstrip("/") + url
+
+
 def response(resp: "SXNG_Response") -> EngineResults:
     # delegate the response to the appropriate parser based on search type
 
@@ -472,6 +558,7 @@ def _parse_results(parse_func: Callable[..., MainResult | Image], resp: "SXNG_Re
     if brave_category in ("search", "goggles"):
         _parse_secondary_items(json_data, results)
 
+    resolve_result_urls(results, resp, lookup=brave_resolve_cloaked_urls)
     return results
 
 

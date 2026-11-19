@@ -31,6 +31,14 @@ time_range_support = True
 safesearch = True
 fetch_traits = _brave.fetch_traits
 
+brave_resolve_cloaked_urls: bool = True
+"""Look up the destination of the cloaked ``/go/v1`` result links; costs one extra
+HTTP request per result, see :py:obj:`searx.engines.brave.brave_resolve_cloaked_urls`.
+
+The engine settings are applied to the module instance of *this* engine (see
+:py:obj:`searx.utils.load_module`), therefore the attribute is declared here
+again and is not inherited from :py:obj:`searx.engines.brave`."""
+
 
 def request(query: str, params: dict[str, t.Any]) -> None:
     args: dict[str, t.Any] = {"q": query, "source": "web"}
@@ -65,7 +73,7 @@ def response(resp: "SXNG_Response") -> EngineResults:
     for result in eval_xpath_list(dom, '//div[contains(@class, "snippet") and @data-type="web"]'):
         url = eval_xpath_getindex(result, ".//a/@href", 0, default="")
         title = eval_xpath_getindex(result, './/*[contains(@class, "search-snippet-title")]', 0, default=None)
-        if not url.startswith("http") or title is None:
+        if not url or title is None:
             continue
         content = eval_xpath_getindex(
             result, './/*[contains(@class, "generic-snippet")]//*[contains(@class, "content")]', 0, default=None
@@ -78,4 +86,9 @@ def response(resp: "SXNG_Response") -> EngineResults:
             )
         )
 
+    # Brave cloaks the links of some result pages as ``/go/v1/<token>``
+    _brave.resolve_result_urls(results, resp, lookup=brave_resolve_cloaked_urls)
+
+    # drop the results with a relative link that is not a cloaked one
+    results[:] = [result for result in results if result["url"].startswith("http")]
     return results

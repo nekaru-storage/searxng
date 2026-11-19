@@ -3319,6 +3319,10 @@ engines:
     categories: [general, web]
     brave_category: search
     # brave_spellcheck: true
+    # Brave cloaks the result links as /go/v1/<token>; resolving them costs one
+    # extra request per result.  Disable to let the browser resolve the links on
+    # click (Brave's intended behaviour).
+    # brave_resolve_cloaked_urls: false
 
   - name: brave.images
     engine: brave
