@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Purili"""
 
+# pyright: reportUnknownVariableType=false, reportUnknownArgumentType=false
 from datetime import datetime
 import typing as t
 from urllib.parse import urlencode, unquote_plus
@@ -53,7 +54,7 @@ def _extract_image_url(proxied_url: str | None) -> str:
     return unquote_plus(url_encoded)
 
 
-def response(resp: "SXNG_Response"):
+def response(resp: "SXNG_Response") -> EngineResults:
     res = EngineResults()
 
     json_resp: dict[str, t.Any] = resp.json()

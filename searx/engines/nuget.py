@@ -17,24 +17,24 @@ about = {
     "use_official_api": True,
     "require_api_key": False,
     "description": (
-        "NuGet is the package manager for .NET. "
+        "NuGet is the package manager for Microsoft's .NET platform. "
         "The NuGet client tools provide the ability to produce and consume packages. "
         "The NuGet Gallery is the central package repository used by all package authors and consumers."
     ),
 }
 
 # engine dependent config
-engine_type = "online"
-categories = ["it", "packages", "nuget"]
+categories = ["it", "packages"]
 paging = True
 page_size = 20
 index_url = "https://api.nuget.org/v3/index.json"
-web_base_url = "https://nuget.org/"
-search_resource_type = "SearchQueryService"
+base_url = "https://nuget.org/"
+
+SEARCH_RESOURCE_TYPE = "SearchQueryService"
 CACHE: EngineCache
 
 
-def init(engine_settings: dict[str, t.Any]):
+def setup(engine_settings: dict[str, t.Any]) -> bool | None:
     global CACHE  # pylint: disable=global-statement
     CACHE = EngineCache(engine_settings["name"])
 
@@ -49,7 +49,7 @@ def _get_search_url() -> str:
         # will also select `SearchQueryService/3.0.0-rc` and `SearchQueryService/3.5.0`
         # 3.0.0-rc is just an alias, and 3.5.0 supports package type filtering, which doesn't matter here
         filter(
-            lambda res: res["@type"].startswith(search_resource_type),
+            lambda res: res["@type"].startswith(SEARCH_RESOURCE_TYPE),
             resources,
         )
     )
@@ -71,7 +71,7 @@ def response(resp: SXNG_Response):
         res.append(
             res.types.LegacyResult(
                 template="packages.html",
-                url=f"{web_base_url}/packages/{package['id']}/{package['version']}",
+                url=f"{base_url}/packages/{package['id']}/{package['version']}",
                 title=package["id"],
                 package_name=package["id"],
                 tags=package.get("tags"),
